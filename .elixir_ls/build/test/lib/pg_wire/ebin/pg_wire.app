@@ -1,9 +1,0 @@
-{application,pg_wire,
-             [{applications,[kernel,stdlib,elixir,logger,ranch,postgrex]},
-              {description,"pg_wire"},
-              {modules,['Elixir.PGWire','Elixir.PGWire.Application',
-                        'Elixir.PGWire.BinaryUtils','Elixir.PGWire.Conn',
-                        'Elixir.PGWire.Messages','Elixir.PGWire.Protocol']},
-              {registered,[]},
-              {vsn,"0.1.0"},
-              {mod,{'Elixir.PGWire.Application',[]}}]}.
