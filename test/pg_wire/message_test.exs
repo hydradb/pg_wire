@@ -1,10 +1,13 @@
 defmodule PGWire.MessageTest do
   use ExUnit.Case
+
   import PGWire.Messages
   import PGWire.BinaryUtils
+
   alias PGWire.Messages
 
   @startup_opts [user: "hydra", database: "hydra"]
+
   describe "decode" do
     test "SSL negotitation" do
       data = <<1234::int16, 5679::int16>>
