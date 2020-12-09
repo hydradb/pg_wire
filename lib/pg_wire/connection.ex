@@ -1,24 +1,6 @@
 defmodule PGWire.Connection do
   @behaviour :gen_statem
 
-  @timeout 1000 * 60 * 60
-  @test_data [
-    %{
-      "id" => 1,
-      "name" => "Hydra DB",
-      "map" => %{"key" => "value"},
-      "list" => [1, 2, 3],
-      "float" => 1.0
-    },
-    %{
-      "id" => 2,
-      "name" => "Hydra DB",
-      "map" => %{"key" => "value"},
-      "list" => [4, 5, 6],
-      "float" => 2.0
-    }
-  ]
-
   require PGWire.Messages
   require Logger
 
@@ -57,27 +39,12 @@ defmodule PGWire.Connection do
   end
 
   def connected(:info, {:tcp, _, msg}, %__MODULE__{transport: transport, socket: socket} = state) do
-    {msg, next_state} =
-      case Messages.decode(msg) do
-        Messages.msg_ssl_request() ->
-          {<<?N>>, :connected}
+    {msgs, next_state} =
+      msg
+      |> Messages.decode()
+      |> PGWire.Protocol.startup()
 
-        Messages.msg_startup(params: _p) ->
-          auth_type = Messages.auth_type(:cleartext)
-
-          msg =
-            [type: auth_type]
-            |> Messages.msg_auth()
-            |> Messages.encode_msg()
-
-          {msg, :unauthenticated}
-
-        msg ->
-          Logger.warn(fn -> "#{inspect(msg)} not valid in state=connected" end)
-          {<<"Error"::binary>>, :disconnect}
-      end
-
-    transport.send(socket, msg)
+    transport.send(socket, msgs)
 
     {:next_state, next_state, state, []}
   end
@@ -92,26 +59,9 @@ defmodule PGWire.Connection do
         %__MODULE__{transport: transport, socket: socket} = state
       ) do
     {msgs, next_state} =
-      case Messages.decode(msg) do
-        Messages.msg_password(pass: _pass) ->
-          auth_type = Messages.auth_type(:ok)
-
-          auth_ok =
-            [type: auth_type]
-            |> Messages.msg_auth()
-            |> Messages.encode_msg()
-
-          q_ready =
-            [status: ?I]
-            |> Messages.msg_ready()
-            |> Messages.encode_msg()
-
-          {[auth_ok, q_ready], :idle}
-
-        msg ->
-          Logger.warn(fn -> "#{inspect(msg)} not valid in state=connected" end)
-          {<<"Error"::binary>>, :disconnect}
-      end
+      msg
+      |> Messages.decode()
+      |> PGWire.Protocol.authenticate()
 
     for msg <- List.wrap(msgs), do: transport.send(socket, msg)
 
@@ -124,36 +74,9 @@ defmodule PGWire.Connection do
 
   def idle(:info, {:tcp, _, msg}, %__MODULE__{transport: transport, socket: socket} = state) do
     {msgs, next_state} =
-      case Messages.decode(msg) do
-        Messages.msg_query(statement: statement) ->
-          Logger.debug(fn -> "Received Query=#{statement}" end)
-
-          row_d =
-            @test_data
-            |> row_description()
-            |> Messages.encode_msg()
-
-          data_d =
-            @test_data
-            |> row_data()
-            |> Enum.map(&Messages.encode_msg/1)
-
-          command_complete =
-            [tag: "SELECT 2"]
-            |> Messages.msg_command_complete()
-            |> Messages.encode_msg()
-
-          query_ready =
-            [status: ?I]
-            |> Messages.msg_ready()
-            |> Messages.encode_msg()
-
-          {[row_d, data_d, command_complete, query_ready], :idle}
-
-        msg ->
-          Logger.warn(fn -> "#{inspect(msg)} not valid in state=connected" end)
-          {<<"Error"::binary>>, :disconnect}
-      end
+      msg
+      |> Messages.decode()
+      |> PGWire.Protocol.query()
 
     for msg <- List.wrap(msgs), do: transport.send(socket, msg)
 
@@ -162,21 +85,5 @@ defmodule PGWire.Connection do
 
   def disconnect(_, _, _) do
     {:stop, :normal}
-  end
-
-  defp row_data(rows) when is_list(rows) do
-    for row <- rows, do: row_data(row)
-  end
-
-  defp row_data(row) when is_map(row) do
-    values = PGWire.Encoder.encode(row, [])
-    Messages.msg_data_row(values: values)
-  end
-
-  defp row_description([row | _]) when is_map(row), do: row_description(row)
-
-  defp row_description(row) when is_map(row) do
-    desc = PGWire.Descriptor.encode_descriptor(row, [])
-    Messages.msg_row_desc(fields: desc)
   end
 end
