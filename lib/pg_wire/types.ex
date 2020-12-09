@@ -33,15 +33,16 @@ defmodule PGWire.Encode do
   def integer(int) do
     {_oid, typelen} = o = OID.int()
     size = bin_size(typelen)
-
-    {<<int::size(size)>>, o}
+    int = Integer.to_string(int)
+    {<<int::binary>>, o}
   end
 
   @spec float(float()) :: t()
   def float(f) when is_float(f) do
     o = OID.float()
 
-    {<<f::float>>, o}
+    f = Float.to_string(f)
+    {<<f::binary>>, o}
   end
 
   @spec map(map()) :: t()
@@ -69,6 +70,11 @@ defprotocol PGWire.Encoder do
 
   @spec encode(t(), opts) :: term()
   def encode(row, opts)
+end
+
+defprotocol PGWire.Descriptor do
+  @type t :: term()
+  @type opts :: Keyword.t()
 
   @spec encode_descriptor(t(), opts) :: term()
   def encode_descriptor(row, opts)
@@ -78,18 +84,10 @@ defimpl PGWire.Encoder, for: Integer do
   def encode(value, _opts \\ []) do
     PGWire.Encode.integer(value)
   end
-
-  def encode_descriptor(value, _opts \\ []) do
-    PGWire.Encode.integer(value)
-  end
 end
 
 defimpl PGWire.Encoder, for: Float do
   def encode(value, _opts \\ []) do
-    PGWire.Encode.float(value)
-  end
-
-  def encode_descriptor(value, _opts \\ []) do
     PGWire.Encode.float(value)
   end
 end
@@ -98,36 +96,35 @@ defimpl PGWire.Encoder, for: List do
   def encode(value, _opts \\ []) do
     PGWire.Encode.list(value)
   end
-
-  def encode_descriptor(value, _opts \\ []) do
-    PGWire.Encode.list(value)
-  end
 end
 
 defimpl PGWire.Encoder, for: BitString do
   def encode(value, _opts \\ []) do
     PGWire.Encode.string(value)
   end
-
-  def encode_descriptor(value, _opts \\ []) do
-    PGWire.Encode.string(value)
-  end
 end
 
 defimpl PGWire.Encoder, for: Map do
   def encode(map, opts) do
-    keys = Keyword.get(opts, :descriptor, Map.keys(map))
+    _keys = Keyword.get(opts, :descriptor, Map.keys(map))
 
     map
-    |> Map.take(keys)
     |> Map.values()
     |> Enum.map(&(&1 |> do_encode() |> elem(0)))
   end
 
+  defp do_encode(map) when is_map(map), do: PGWire.Encode.map(map)
+  defp do_encode(list) when is_list(list), do: PGWire.Encode.list(list)
+  defp do_encode(value), do: PGWire.Encoder.encode(value, [])
+end
+
+defimpl PGWire.Descriptor, for: Map do
   def encode_descriptor(map, _opts) do
-    map
-    |> Map.keys()
-    |> Enum.map(&(&1 |> do_encode() |> elem(1)))
+    # Enum.map(map, &(&1 |> do_encode() |> elem(1)))
+    Enum.map(map, fn {k, v} ->
+      {_, desc} = do_encode(v)
+      {k, desc}
+    end)
   end
 
   defp do_encode(map) when is_map(map), do: PGWire.Encode.map(map)

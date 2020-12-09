@@ -31,19 +31,56 @@ defmodule PGWire.Protocol do
 
   def handle_message(msg_query(statement: statement), state) do
     IO.puts("statement=#{inspect(statement)}")
-    row_description = ["id"] |> row_desc() |> encode_msg()
-    row_value = ["hello"] |> data_row() |> encode_msg()
+
+    data = [
+      %{
+        "id" => 1,
+        "name" => "Hydra DB",
+        "map" => %{"key" => "value"},
+        "list" => [1, 2, 3],
+        "float" => 1.0
+      },
+      %{
+        "id" => 2,
+        "name" => "Hydra DB",
+        "map" => %{"key" => "value"},
+        "list" => [4, 5, 6],
+        "float" => 2.0
+      }
+    ]
+
+    row_d = data |> row_description() |> encode_msg()
+    data_d = data |> row_data() |> Enum.map(&encode_msg/1)
+
+    IO.puts("#{inspect(data_d)}")
 
     command_complete =
       [tag: "SELECT 2"]
       |> msg_command_complete()
       |> encode_msg()
+
     query_ready =
       [status: ?I]
       |> msg_ready()
       |> encode_msg()
 
-    {:multi_reply, [row_description, row_value, command_complete, query_ready], state}
+    {:multi_reply, [row_d, data_d, command_complete, query_ready], state}
+  end
+
+  defp row_data(rows) when is_list(rows) do
+    for row <- rows, do: row_data(row)
+  end
+
+  defp row_data(row) when is_map(row) do
+    values = PGWire.Encoder.encode(row, [])
+    msg_data_row(values: values)
+  end
+
+  defp row_description([row | _]) when is_map(row), do: row_description(row)
+
+  defp row_description(row) when is_map(row) do
+    desc = PGWire.Descriptor.encode_descriptor(row, [])
+    msg_row_desc(fields: desc)
   end
 
   #   RowDescription (B)
@@ -80,35 +117,6 @@ defmodule PGWire.Protocol do
   # The format code being used for the field. Currently will be zero (text) or one (binary). In a RowDescription returned from the statement variant of Describe, the format code is not yet known and will always be zero.
   # https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat
   # https://segmentfault.com/a/1190000017136059
-
-  def data_row(row) do
-    values = for field <- row, do: field_value(field)
-
-    msg_data_row(values: values)
-  end
-
-  def row_desc(row) do
-    fields = for field <- row, do: field_encode(field)
-
-    msg_row_desc(fields: fields)
-  end
-
-  def field_value(value) do
-    <<byte_size(value)::int32, value::binary>>
-  end
-
-  def field_encode(field) do
-    <<
-      field::binary,
-      0::int8,
-      0::int32,
-      0::int16,
-      17::int32,
-      -1::int16,
-      -1::int32,
-      0::int16
-    >>
-  end
 end
 
 # {:ok, pid} = Postgrex.start_link(hostname: "localhost", username: "postgres", password: "postgres", database: "postgres", show_sensitive_data_on_connection_error: true)

@@ -184,13 +184,24 @@ defmodule PGWire.Messages do
   end
 
   def encode(msg_row_desc(fields: fields)) do
-    bin = Enum.reduce(fields, <<length(fields)::int16>>, fn b, acc -> [acc, b] end)
+    bin =
+      Enum.reduce(fields, <<length(fields)::int16>>, fn {key, {oid, typelen}}, acc ->
+        b =
+          <<key::binary, 0::int8, 0::int32, 0::int16, oid::int32, typelen::int16, -1::int32,
+            1::int16>>
+
+        [acc, b]
+      end)
 
     {<<?T>>, bin}
   end
 
   def encode(msg_data_row(values: values)) do
-    bin = Enum.reduce(values, <<length(values)::int16>>, fn b, acc -> [acc, b] end)
+    bin =
+      Enum.reduce(values, <<length(values)::int16>>, fn value, acc ->
+        b = <<byte_size(value)::int32, value::binary>>
+        [acc, b]
+      end)
 
     {<<?D>>, bin}
   end

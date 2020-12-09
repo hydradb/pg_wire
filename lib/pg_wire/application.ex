@@ -7,7 +7,7 @@ defmodule PGWire.Application do
         :pg_wire,
         :ranch_tcp,
         [{:port, 5432}],
-        PGWire.Conn,
+        PGWire.Connection,
         []
       )
     ]

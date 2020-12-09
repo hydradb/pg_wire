@@ -9,7 +9,7 @@ defmodule PGWire.Types.OID do
   def boolean, do: {16, 1}
 
   @spec int() :: t()
-  def int, do: {23, 4}
+  def int, do: {20, 8}
 
   @spec float() :: t()
   def float, do: {701, 8}
