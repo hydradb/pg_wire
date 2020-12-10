@@ -15,14 +15,12 @@ defmodule PGWire.EncodeTest do
 
     test "integer/1 encode" do
       assert {bin, {_, typelen}} = PGWire.Encode.integer(1)
-      assert bin == <<0, 0, 0, 1>>
-      assert byte_size(bin) == typelen
+      assert bin == <<"1"::binary>>
     end
 
     test "float/1 encode" do
       assert {f_bin, {_, typelen}} = PGWire.Encode.float(1.0)
-      assert f_bin == <<1.0::float>>
-      assert byte_size(f_bin) == typelen
+      assert f_bin == <<Float.to_string(1.0)::binary>>
     end
 
     test "map/1 encode as json_t" do

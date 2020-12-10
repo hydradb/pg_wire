@@ -6,7 +6,7 @@ defmodule PGWire.Connection do
 
   alias PGWire.Messages
 
-  defstruct [:socket, :transport]
+  defstruct [:socket, :transport, :portal]
 
   def start_link(ref, transport, opts) do
     pid = :proc_lib.spawn_link(__MODULE__, :init, [{ref, transport, opts}])
