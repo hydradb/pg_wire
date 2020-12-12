@@ -5,26 +5,29 @@ defmodule PGWire.ConnectionTest do
 
   alias PGWire.Connection
 
-  describe "connected" do
-    test "with ssl_message stays in `connected` state" do
-      tcp_msg = tcp_message(Postgrex.Messages.msg_ssl_request())
+  describe "state `connected`" do
+    setup do
       state = make_state()
+
+      {:ok, state: state}
+    end
+
+    test "with ssl_message stays in `connected` state", %{state: state} do
+      tcp_msg = tcp_message(Postgrex.Messages.msg_ssl_request())
 
       assert {:next_state, next_state, _, _} = Connection.connected(:info, tcp_msg, state)
       assert next_state == :connected
     end
 
-    test "responds to ssl_message with a ?N" do
+    test "responds to ssl_message with a ?N", %{state: state} do
       tcp_msg = tcp_message(Postgrex.Messages.msg_ssl_request())
-      state = make_state()
 
       assert {:next_state, next_state, _, _} = Connection.connected(:info, tcp_msg, state)
       assert assert_receive <<?N>>
     end
 
-    test "with startup goes to `unauthenticated` state" do
+    test "with startup goes to `unauthenticated` state", %{state: state} do
       params = [user: "hydra", database: "hydra"]
-      state = make_state()
 
       tcp_msg =
         [params: params]
@@ -35,9 +38,8 @@ defmodule PGWire.ConnectionTest do
       assert next_state == :unauthenticated
     end
 
-    test "responds to startup msg with password challange" do
+    test "responds to startup msg with password challange", %{state: state} do
       params = [user: "hydra", database: "hydradb"]
-      state = make_state()
 
       tcp_msg =
         [params: params]
@@ -53,6 +55,81 @@ defmodule PGWire.ConnectionTest do
 
       assert_receive ^msg
     end
+
+    test "moves to `disconnect` state for any errors", %{state: state} do
+      tcp_msg = {:tcp, nil, <<?E>>}
+
+      assert {:next_state, :disconnect, _, _} = Connection.connected(:info, tcp_msg, state)
+    end
+
+    test "tcp_error -> {:stop, reason} ", %{state: state} do
+      reason = :error
+      tcp_msg = {:tcp_error, nil, reason}
+
+      assert {:stop, ^reason} = Connection.connected(:info, tcp_msg, state)
+    end
+  end
+
+  describe "state `unathenticated`" do
+    setup do
+      state = make_state()
+
+      tcp_msg =
+        [pass: "pass"]
+        |> Postgrex.Messages.msg_password()
+        |> tcp_message()
+
+      {:ok, state: state, tcp_msg: tcp_msg}
+    end
+
+    test "password message ok -> `idle` state", %{state: state, tcp_msg: tcp_msg} do
+      assert {:next_state, :idle, _, _} = Connection.unauthenticated(:info, tcp_msg, state)
+    end
+
+    test "password message ok sends ok & ready", %{state: state, tcp_msg: tcp_msg} do
+      ok =
+        [type: PGWire.Messages.auth_type(:ok)]
+        |> PGWire.Messages.msg_auth()
+        |> PGWire.Messages.encode_msg()
+
+      ready =
+        [status: ?I]
+        |> PGWire.Messages.msg_ready()
+        |> PGWire.Messages.encode_msg()
+
+      _ = Connection.unauthenticated(:info, tcp_msg, state)
+
+      assert_receive ^ok
+      assert_receive ^ready
+    end
+
+    test "password message error -> `diconnect` state", %{state: state} do
+      assert {:next_state, :disconnect, _, _} =
+               Connection.unauthenticated(:info, {:tcp, nil, <<?E>>}, state)
+    end
+  end
+
+  describe "state `idle`" do
+    setup do
+      state = make_state()
+      pid = start_supervised(PGWire.Connection.Supervisor)
+
+      {:ok, state: state}
+    end
+
+    test "unknown message sends error but stays in :idle", %{state: state} do
+      assert {:keep_state, new_state, []} = Connection.idle(:info, {:tcp, nil, <<?E>>}, state)
+      assert_receive <<?E>>
+    end
+
+    test "starts a portal for a `simple query`", %{state: state} do
+      q = Postgrex.Messages.msg_query(statement: "SELECT * FROM posts")
+      msg = tcp_message(q)
+
+      assert {:keep_state, %Connection{portals: portals}, []} = Connection.idle(:info, msg, state)
+      refute Enum.empty?(portals)
+      assert portals |> Map.values() |> List.first() == q
+    end
   end
 
   defp tcp_message(msg) do
@@ -65,6 +142,6 @@ defmodule PGWire.ConnectionTest do
   end
 
   defp make_state do
-    %Connection{transport: Kernel, socket: self()}
+    %Connection{transport: Kernel, socket: self(), portals: %{}}
   end
 end
