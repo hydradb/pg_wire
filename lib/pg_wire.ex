@@ -1,18 +1,18 @@
 defmodule PGWire do
-  @moduledoc """
-  Documentation for `PGWire`.
-  """
+  @type opts :: Keyword.t()
 
-  @doc """
-  Hello world.
+  @spec child_spec(opts) :: Supervisor.child_spec()
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, opts}
+    }
+  end
 
-  ## Examples
+  @spec start_link(PGWire.Protocol.t(), opts) :: Supervisor.on_start()
+  def start_link(protocol, opts \\ []) do
+    opts = Keyword.merge(opts, protocol: protocol)
 
-      iex> PGWire.hello()
-      :world
-
-  """
-  def hello do
-    :world
+    PGWire.Supervisor.start_link(opts)
   end
 end
