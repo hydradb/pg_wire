@@ -56,6 +56,21 @@ defmodule PGWire.ConnectionTest do
       assert_receive ^msg
     end
 
+    test "responds to startup sets `session_params` on the state`", %{state: state} do
+      params = [user: "hydra", database: "hydradb"]
+
+      tcp_msg =
+        [params: params]
+        |> Postgrex.Messages.msg_startup()
+        |> tcp_message()
+
+      assert {:next_state, _, %Connection{session_params: p}, _} =
+               Connection.connected(:info, tcp_msg, state)
+
+      assert Map.get(p, :user) == "hydra"
+      assert Map.get(p, :database) == "hydradb"
+    end
+
     test "moves to `disconnect` state for any errors", %{state: state} do
       tcp_msg = {:tcp, nil, <<?E>>}
 
@@ -142,6 +157,6 @@ defmodule PGWire.ConnectionTest do
   end
 
   defp make_state do
-    %Connection{transport: Kernel, socket: self(), portals: %{}}
+    %Connection{transport: Kernel, socket: self(), portals: %{}, session_params: %{}}
   end
 end

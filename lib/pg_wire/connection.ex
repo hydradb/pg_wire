@@ -6,24 +6,7 @@ defmodule PGWire.Connection do
 
   alias PGWire.Messages
 
-  @data [
-    %{
-      "id" => 1,
-      "name" => "Hydra DB",
-      "map" => %{"key" => "value"},
-      "list" => [1, 2, 3],
-      "float" => 1.0
-    },
-    %{
-      "id" => 2,
-      "name" => "Hydra DB",
-      "map" => %{"key" => "value"},
-      "list" => [4, 5, 6],
-      "float" => 2.0
-    }
-  ]
-
-  defstruct [:socket, :transport, :portals]
+  defstruct [:socket, :transport, :portals, :session_params, :mod, :mod_state]
 
   def start_link(ref, transport, opts) do
     pid = :proc_lib.spawn_link(__MODULE__, :init, [{ref, transport, opts}])
@@ -34,7 +17,8 @@ defmodule PGWire.Connection do
   def callback_mode(), do: :state_functions
 
   @impl true
-  def init({ref, transport, _opts}) do
+  def init({ref, transport, opts}) do
+    {:ok, mod} = Keyword.fetch(opts, :protocol)
     {:ok, socket} = :ranch.handshake(ref)
 
     :ok =
@@ -44,11 +28,18 @@ defmodule PGWire.Connection do
         reuseaddr: true
       )
 
-    :gen_statem.enter_loop(__MODULE__, [], :connected, %__MODULE__{
+    {:ok, mod_state} = mod.init(opts)
+
+    state = %__MODULE__{
       socket: socket,
       transport: transport,
+      session_params: %{},
+      mod: mod,
+      mod_state: mod_state,
       portals: %{}
-    })
+    }
+
+    :gen_statem.enter_loop(__MODULE__, [], :connected, state)
   end
 
   @impl true
@@ -57,14 +48,14 @@ defmodule PGWire.Connection do
   end
 
   def connected(:info, {:tcp, _, msg}, %__MODULE__{transport: transport, socket: socket} = state) do
-    {msgs, next_state, actions} =
+    {msgs, next_state, new_data_state} =
       msg
       |> Messages.decode()
-      |> handle_startup()
+      |> handle_startup(state)
 
     transport.send(socket, msgs)
 
-    {:next_state, next_state, state, []}
+    {:next_state, next_state, new_data_state, []}
   end
 
   def connected(:info, {:tcp_error, _, reason}, _state) do
@@ -76,14 +67,13 @@ defmodule PGWire.Connection do
         {:tcp, _, msg},
         %__MODULE__{transport: transport, socket: socket} = state
       ) do
-    {msgs, next_state, actions} =
+    {msgs, next_state, new_data_state} =
       msg
       |> Messages.decode()
-      |> handle_authenticate()
+      |> handle_authenticate(state)
 
     for msg <- List.wrap(msgs), do: transport.send(socket, msg)
-
-    {:next_state, next_state, state, actions}
+    {:next_state, next_state, new_data_state, []}
   end
 
   def unauthenticated(:info, {:tcp_closed, _}, _data) do
@@ -117,11 +107,11 @@ defmodule PGWire.Connection do
     {:stop, :normal}
   end
 
-  def handle_startup(Messages.msg_ssl_request()) do
-    {<<?N>>, :connected, []}
+  def handle_startup(Messages.msg_ssl_request(), state) do
+    {<<?N>>, :connected, state}
   end
 
-  def handle_startup(Messages.msg_startup(params: _p)) do
+  def handle_startup(Messages.msg_startup(params: p), state) do
     auth_type = Messages.auth_type(:cleartext)
 
     msg =
@@ -129,14 +119,14 @@ defmodule PGWire.Connection do
       |> Messages.msg_auth()
       |> Messages.encode_msg()
 
-    {msg, :unauthenticated, []}
+    {msg, :unauthenticated, %{state | session_params: p}}
   end
 
-  def handle_startup(msg) do
-    {<<"Error #{inspect(msg)}"::binary>>, :disconnect, []}
+  def handle_startup(msg, state) do
+    {<<"Error #{inspect(msg)}"::binary>>, :disconnect, state}
   end
 
-  def handle_authenticate(Messages.msg_password(pass: _pass)) do
+  def handle_authenticate(Messages.msg_password(pass: _pass), state) do
     auth_type = Messages.auth_type(:ok)
 
     auth_ok =
@@ -149,15 +139,14 @@ defmodule PGWire.Connection do
       |> Messages.msg_ready()
       |> Messages.encode_msg()
 
-    {[auth_ok, q_ready], :idle, []}
+    {[auth_ok, q_ready], :idle, state}
   end
 
-  def handle_authenticate(msg) do
-    {<<"Error #{inspect(msg)}"::binary>>, :disconnect, []}
+  def handle_authenticate(msg, state) do
+    {<<"Error #{inspect(msg)}"::binary>>, :disconnect, state}
   end
 
   def handle_query(Messages.msg_query() = q) do
-    IO.puts("IN HERE handle_query")
     {:ok, pid} = PGWire.Portal.query({q, self()})
     ref = Process.monitor(pid)
 
@@ -165,7 +154,6 @@ defmodule PGWire.Connection do
   end
 
   def handle_query(msg) do
-    IO.puts("fail got message #{inspect(msg)}")
     {:error, <<?E>>}
   end
 
