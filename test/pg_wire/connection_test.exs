@@ -87,7 +87,7 @@ defmodule PGWire.ConnectionTest do
 
   describe "state `unathenticated`" do
     setup do
-      state = make_state()
+      state = make_state(OkProtocol)
 
       tcp_msg =
         [pass: "pass"]
@@ -158,5 +158,27 @@ defmodule PGWire.ConnectionTest do
 
   defp make_state do
     %Connection{transport: Kernel, socket: self(), portals: %{}, session_params: %{}}
+  end
+
+  defp make_state(mod) do
+    %Connection{
+      transport: Kernel,
+      socket: self(),
+      portals: %{},
+      session_params: %{},
+      mod: mod,
+      mod_state: %{}
+    }
+  end
+end
+
+defmodule OkProtocol do
+  @behaviour PGWire.Protocol
+  def init(_) do
+    {:ok, %{}}
+  end
+
+  def handle_authenticate(_, state) do
+    {:ok, state}
   end
 end

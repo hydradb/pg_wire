@@ -1,6 +1,4 @@
 defmodule PGWire.Types.OID do
-  import PGWire.BinaryUtils
-
   @type oid :: integer()
   @type typlen :: integer()
   @type t :: {oid(), typlen()}

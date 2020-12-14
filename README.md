@@ -1,6 +1,13 @@
 # PGWire
 
-**TODO: Add description**
+PostgreSQL backend wire protocol in pure elixir.
+
+## Features
+- [ ] Query pipelining
+- [ ] Simple query
+- [ ] Extended query
+- [ ] Notify / Listen
+- [ ] Copy
 
 ## Installation
 
@@ -18,4 +25,3 @@ end
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at [https://hexdocs.pm/pg_wire](https://hexdocs.pm/pg_wire).
-
