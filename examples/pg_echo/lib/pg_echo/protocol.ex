@@ -1,16 +1,18 @@
 defmodule PGEcho.Protocol do
   require Logger
-  @behaviour PGWire.Protocol
-  alias PGWire.{Auth, Query}
+  use PGWire.Protocol
+  alias PGWire.{Authentication, Query, Protocol}
 
   def init(_opts) do
     {:ok, %{}}
   end
 
-  def handle_authenticate(%Auth{} = a, state) do
-    {:ok, state}
+  @impl true
+  def handle_authentication(%Authentication{} = a, state) do
+    {:ok, [], state}
   end
 
+  @impl true
   def handle_query(%Query{statement: statement} = q, state) do
     row =
       statement
@@ -19,6 +21,17 @@ defmodule PGEcho.Protocol do
       |> Enum.map(fn {part, index} -> {"part#{index}", part} end)
       |> Enum.into(%{})
 
-    {:ok, [row], state}
+    msgs = encode_and_complete(q, [row])
+
+    {:ok, msgs, state}
+  end
+
+  defp encode_and_complete(query, rows) do
+    [
+      Protocol.encode_descriptor(rows),
+      Protocol.encode_data(rows),
+      Protocol.complete(query, length(rows)),
+      Protocol.ready()
+    ]
   end
 end

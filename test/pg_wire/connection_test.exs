@@ -3,11 +3,11 @@ defmodule PGWire.ConnectionTest do
   require Postgrex.Messages
   require PGWire.Messages
 
-  alias PGWire.Connection
+  alias PGWire.WireProtocol, as: Connection
 
   describe "state `connected`" do
     setup do
-      state = make_state()
+      state = make_state(TestProtocol)
 
       {:ok, state: state}
     end
@@ -15,14 +15,14 @@ defmodule PGWire.ConnectionTest do
     test "with ssl_message stays in `connected` state", %{state: state} do
       tcp_msg = tcp_message(Postgrex.Messages.msg_ssl_request())
 
-      assert {:next_state, next_state, _, _} = Connection.connected(:info, tcp_msg, state)
-      assert next_state == :connected
+      assert {:keep_state, state, []} = Connection.connected(:info, tcp_msg, state)
+      # assert next_state == :connected
     end
 
     test "responds to ssl_message with a ?N", %{state: state} do
       tcp_msg = tcp_message(Postgrex.Messages.msg_ssl_request())
 
-      assert {:next_state, next_state, _, _} = Connection.connected(:info, tcp_msg, state)
+      assert {:keep_state, _, _} = Connection.connected(:info, tcp_msg, state)
       assert assert_receive <<?N>>
     end
 
@@ -87,21 +87,26 @@ defmodule PGWire.ConnectionTest do
 
   describe "state `unathenticated`" do
     setup do
-      state = make_state(OkProtocol)
+      state = make_state(TestProtocol)
 
-      tcp_msg =
-        [pass: "pass"]
+      ok =
+        [pass: "pg"]
         |> Postgrex.Messages.msg_password()
         |> tcp_message()
 
-      {:ok, state: state, tcp_msg: tcp_msg}
+      not_ok =
+        [pass: "p"]
+        |> Postgrex.Messages.msg_password()
+        |> tcp_message()
+
+      {:ok, state: state, ok: ok, not_ok: not_ok}
     end
 
-    test "password message ok -> `idle` state", %{state: state, tcp_msg: tcp_msg} do
+    test "password message ok -> `idle` state", %{state: state, ok: tcp_msg} do
       assert {:next_state, :idle, _, _} = Connection.unauthenticated(:info, tcp_msg, state)
     end
 
-    test "password message ok sends ok & ready", %{state: state, tcp_msg: tcp_msg} do
+    test "password message ok sends ok & ready", %{state: state, ok: tcp_msg} do
       ok =
         [type: PGWire.Messages.auth_type(:ok)]
         |> PGWire.Messages.msg_auth()
@@ -118,32 +123,43 @@ defmodule PGWire.ConnectionTest do
       assert_receive ^ready
     end
 
-    test "password message error -> `diconnect` state", %{state: state} do
-      assert {:next_state, :disconnect, _, _} =
-               Connection.unauthenticated(:info, {:tcp, nil, <<?E>>}, state)
+    test "password message error -> `diconnect` state", %{state: state, not_ok: tcp_msg} do
+      assert {:next_state, :disconnect, _, _} = Connection.unauthenticated(:info, tcp_msg, state)
     end
   end
 
   describe "state `idle`" do
     setup do
-      state = make_state()
+      state = make_state(TestProtocol)
       pid = start_supervised(PGWire.Connection.Supervisor)
 
       {:ok, state: state}
     end
 
     test "unknown message sends error but stays in :idle", %{state: state} do
-      assert {:keep_state, new_state, []} = Connection.idle(:info, {:tcp, nil, <<?E>>}, state)
+      tcp_msg =
+        [pass: "p"]
+        |> Postgrex.Messages.msg_password()
+        |> tcp_message()
+
+      assert {:keep_state, new_state, []} = Connection.idle(:info, tcp_msg, state)
       assert_receive <<?E>>
     end
 
-    test "starts a portal for a `simple query`", %{state: state} do
-      q = Postgrex.Messages.msg_query(statement: "SELECT * FROM posts")
-      msg = tcp_message(q)
+    test "handle_query is called for query msgs ", %{state: state} do
+      msg =
+        [statement: "SELECT * FROM posts"]
+        |> Postgrex.Messages.msg_query()
+        |> tcp_message()
 
-      assert {:keep_state, %Connection{portals: portals}, []} = Connection.idle(:info, msg, state)
-      refute Enum.empty?(portals)
-      assert portals |> Map.values() |> List.first() == q
+      assert {:keep_state, _, _} = Connection.idle(:info, msg, state)
+      assert_receive :handle_query
+    end
+
+    test "unknown info msgs are delegeted to protocol impl", %{state: state} do
+      msg = :noreply
+      assert {:keep_state, _, _} = Connection.idle(:info, msg, state)
+      assert_receive ^msg
     end
   end
 
@@ -167,18 +183,33 @@ defmodule PGWire.ConnectionTest do
       portals: %{},
       session_params: %{},
       mod: mod,
-      mod_state: %{}
+      state: %{}
     }
   end
 end
 
-defmodule OkProtocol do
-  @behaviour PGWire.Protocol
+defmodule TestProtocol do
+  use PGWire.Protocol
+
   def init(_) do
     {:ok, %{}}
   end
 
-  def handle_authenticate(_, state) do
-    {:ok, state}
+  def handle_authentication(%{password: pass}, state) do
+    if pass == "pg" do
+      {:ok, [], state}
+    else
+      {:error, :not_authenticated, state}
+    end
+  end
+
+  def handle_query(%{statement: stmt}, state) do
+    send(self(), :handle_query)
+    {:ok, [], state}
+  end
+
+  def handle_info(type, state) do
+    send(self(), type)
+    {:noreply, [], state}
   end
 end

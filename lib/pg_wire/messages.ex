@@ -101,7 +101,7 @@ defmodule PGWire.Messages do
 
   def decode(msg) do
     IO.puts("Unknown message #{inspect(msg)}")
-    msg
+    :error
   end
 
   def decode_params(<<>>, acc), do: acc
