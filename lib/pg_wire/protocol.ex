@@ -90,7 +90,7 @@ defmodule PGWire.Protocol do
 
     case mod.handle_query(query, mod_state) do
       {:ok, msgs, new_state} ->
-        {:keep, msgs, new_state}
+        {:keep, msgs, %{state | state: new_state}}
 
       {:error, msgs, new_state} ->
         {:error, msgs, %{state | state: new_state}}
