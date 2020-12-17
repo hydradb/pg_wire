@@ -8,7 +8,6 @@ defmodule PGWire.Supervisor do
     protocol = Keyword.fetch!(opts, :protocol)
 
     children = [
-      {PGWire.Connection.Supervisor, []},
       :ranch.child_spec(
         :pg_wire,
         :ranch_tcp,
