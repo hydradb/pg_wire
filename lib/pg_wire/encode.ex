@@ -1,26 +1,10 @@
-defmodule PGWire.Types do
-  @spec typeof(term()) :: term()
-  def typeof(term) do
-    cond do
-      is_nil(term) -> :null_value
-      is_number(term) -> :number_value
-      is_atom(term) -> :string_value
-      is_boolean(term) -> {:bool}
-      is_binary(term) -> :string_value
-      is_list(term) -> :list_value
-      is_map(term) -> :struct_value
-      true -> raise ArgumentError, message: "Oops! got #{inspect(term)}"
-    end
-  end
-end
-
 defmodule PGWire.Encode do
-  alias PGWire.Types.OID
+  alias PGWire.Catalog.Types
 
   @type t :: {binary(), OID.t()}
 
   @spec string(binary()) :: t()
-  def string(bin) when is_binary(bin), do: {<<bin::binary>>, OID.string()}
+  def string(bin) when is_binary(bin), do: {<<bin::binary>>, Types.type_info(:text)}
 
   @spec atom(atom()) :: t()
   def atom(atom) do
@@ -31,15 +15,14 @@ defmodule PGWire.Encode do
 
   @spec integer(integer()) :: t()
   def integer(int) do
-    {_oid, typelen} = o = OID.int()
-    size = bin_size(typelen)
+    %{typlen: typlen} = o = Types.type_info(:int8)
     int = Integer.to_string(int)
     {<<int::binary>>, o}
   end
 
   @spec float(float()) :: t()
   def float(f) when is_float(f) do
-    o = OID.float()
+    o = Types.type_info(:float8)
 
     f = Float.to_string(f)
     {<<f::binary>>, o}
@@ -47,7 +30,7 @@ defmodule PGWire.Encode do
 
   @spec map(map()) :: t()
   def map(map) do
-    o = OID.json_t()
+    o = Types.type_info(:json)
     json = Jason.encode!(map)
 
     {<<json::binary>>, o}
@@ -55,7 +38,7 @@ defmodule PGWire.Encode do
 
   @spec list(list()) :: t()
   def list(list) do
-    o = OID.json_t()
+    o = Types.type_info(:json)
     json = Jason.encode!(list)
 
     {<<json::binary>>, o}

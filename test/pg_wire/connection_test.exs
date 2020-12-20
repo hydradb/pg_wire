@@ -3,7 +3,7 @@ defmodule PGWire.ConnectionTest do
   require Postgrex.Messages
   require PGWire.Messages
 
-  alias PGWire.WireProtocol, as: Connection
+  alias PGWire.Connection
 
   describe "state `connected`" do
     setup do
@@ -131,7 +131,6 @@ defmodule PGWire.ConnectionTest do
   describe "state `idle`" do
     setup do
       state = make_state(TestProtocol)
-      pid = start_supervised(PGWire.Connection.Supervisor)
 
       {:ok, state: state}
     end

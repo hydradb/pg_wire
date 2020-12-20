@@ -154,10 +154,20 @@ defmodule PGWire.Messages do
 
   def encode(msg_row_desc(fields: fields)) do
     bin =
-      Enum.reduce(fields, <<length(fields)::int16>>, fn {key, {oid, typelen}}, acc ->
+      Enum.reduce(fields, <<length(fields)::int16>>, fn field, acc ->
+        row_field(
+          name: name,
+          table_oid: to,
+          column: c,
+          type_oid: oid,
+          type_size: type_size,
+          type_mod: type_mod,
+          format: format
+        ) = field
+
         b =
-          <<key::binary, 0::int8, 0::int32, 0::int16, oid::int32, typelen::int16, -1::int32,
-            1::int16>>
+          <<name::binary, 0::int8, to::int32, c::int16, oid::int32, type_size::int16,
+            type_mod::int32, format::int16>>
 
         [acc, b]
       end)

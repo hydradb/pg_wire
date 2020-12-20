@@ -1,8 +1,8 @@
 defmodule PGWire.ProtocolTest do
   use ExUnit.Case
 
-  import Postgrex.Messages
-  import PGWire.Messages
+  require Postgrex.Messages
+  require PGWire.Messages
 
   alias PGWire.{Messages, Protocol}
 

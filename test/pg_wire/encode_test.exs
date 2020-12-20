@@ -4,8 +4,8 @@ defmodule PGWire.EncodeTest do
   describe "encode" do
     test "string/1 encodes variable size binaries" do
       bin = "test"
-      assert {^bin, {_oid, typelen}} = PGWire.Encode.string(bin)
-      assert -1 == typelen
+      assert {^bin, %{typlen: typlen}} = PGWire.Encode.string(bin)
+      assert -1 == typlen
     end
 
     test "atom/1 encodes as string/1" do
@@ -14,25 +14,25 @@ defmodule PGWire.EncodeTest do
     end
 
     test "integer/1 encode" do
-      assert {bin, {_, typelen}} = PGWire.Encode.integer(1)
+      assert {bin, _} = PGWire.Encode.integer(1)
       assert bin == <<"1"::binary>>
     end
 
     test "float/1 encode" do
-      assert {f_bin, {_, typelen}} = PGWire.Encode.float(1.0)
+      assert {f_bin, _} = PGWire.Encode.float(1.0)
       assert f_bin == <<Float.to_string(1.0)::binary>>
     end
 
     test "map/1 encode as json_t" do
       m = %{"a" => "b"}
-      assert {json, {_, -1}} = PGWire.Encode.map(m)
+      assert {json, _} = PGWire.Encode.map(m)
       assert Jason.encode!(m) == json
     end
 
     test "list/1 encode as json_t" do
       l = [1, 2, 3]
 
-      assert {json, {_, -1}} = PGWire.Encode.list(l)
+      assert {json, _} = PGWire.Encode.list(l)
       assert Jason.encode!(l) == json
     end
   end

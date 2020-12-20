@@ -140,7 +140,20 @@ defmodule PGWire.Protocol do
   def encode_descriptor(row) when is_map(row) do
     desc = PGWire.Descriptor.encode_descriptor(row, [])
 
-    [fields: desc]
+    fields =
+      for {name, %{oid: oid, typlen: typlen}} <- desc,
+          do:
+            Messages.row_field(
+              name: name,
+              table_oid: 0,
+              column: 0,
+              type_oid: oid,
+              type_size: typlen,
+              type_mod: -1,
+              format: 1
+            )
+
+    [fields: fields]
     |> Messages.msg_row_desc()
     |> Messages.encode_msg()
   end
