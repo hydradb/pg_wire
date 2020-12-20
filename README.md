@@ -1,10 +1,13 @@
 # PGWire
 
-PostgreSQL backend wire protocol in pure elixir.
+The PostgreSQL backend protocol for Elixir. Allows the creation of Postgres compatible TCP servers.
 
+## Example
+```elixir
+
+```
 ## Features
-- [ ] Query pipelining
-- [ ] Simple query
+- [ x ] Simple query
 - [ ] Extended query
 - [ ] Notify / Listen
 - [ ] Copy
