@@ -34,7 +34,8 @@ defmodule PGWire.MixProject do
     [
       {:ranch, "~> 2.0"},
       {:jason, "~> 1.2"},
-      {:postgrex, ">= 0.0.0", only: :dev}
+      {:postgrex, ">= 0.0.0", only: :dev},
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
     ]
   end
 end
