@@ -1,10 +1,28 @@
 defmodule PGWire.Encode do
   alias PGWire.Catalog.Types
+  # import PGWire.BinaryUtils
 
   @type t :: {binary(), OID.t()}
 
   @spec string(binary()) :: t()
   def string(bin) when is_binary(bin), do: {<<bin::binary>>, Types.type_info(:text)}
+
+  @spec atom(atom()) :: t()
+  def atom(:nil) do
+    {<<"NULL"::binary>>, %{}}
+  end
+
+  @spec atom(atom()) :: t()
+  def atom(:true) do
+    o = Types.type_info(:bool)
+    {<<"true"::binary>>, o}
+  end
+
+  @spec atom(atom()) :: t()
+  def atom(:false) do
+    o = Types.type_info(:bool)
+    {<<"false"::binary>>, o}
+  end
 
   @spec atom(atom()) :: t()
   def atom(atom) do
@@ -63,6 +81,12 @@ defprotocol PGWire.Descriptor do
   def encode_descriptor(row, opts)
 end
 
+defimpl PGWire.Encoder, for: Atom do
+  def encode(value, _opts \\ []) do
+    PGWire.Encode.atom(value)
+  end
+end
+
 defimpl PGWire.Encoder, for: Integer do
   def encode(value, _opts \\ []) do
     PGWire.Encode.integer(value)
@@ -112,5 +136,6 @@ defimpl PGWire.Descriptor, for: Map do
 
   defp do_encode(map) when is_map(map), do: PGWire.Encode.map(map)
   defp do_encode(list) when is_list(list), do: PGWire.Encode.list(list)
+  defp do_encode(nil), do: PGWire.Encoder.encode("", [])
   defp do_encode(value), do: PGWire.Encoder.encode(value, [])
 end

@@ -178,8 +178,7 @@ defmodule PGWire.Messages do
   def encode(msg_data_row(values: values)) do
     bin =
       Enum.reduce(values, <<length(values)::int16>>, fn value, acc ->
-        b = <<byte_size(value)::int32, value::binary>>
-        [acc, b]
+        [acc, encode_value(value)]
       end)
 
     {<<?D>>, bin}
@@ -215,4 +214,7 @@ defmodule PGWire.Messages do
   end
 
   def auth_type(kind), do: Keyword.fetch!(@auth_types, kind)
+
+  defp encode_value("NULL"), do: <<-1::int32>>
+  defp encode_value(value), do: <<byte_size(value)::int32, value::binary>>
 end

@@ -113,7 +113,7 @@ defmodule PGWire.Connection do
   end
 
   defp send_reply(msgs, %__MODULE__{transport: transport, socket: socket}) do
-    for msg <- List.wrap(msgs), do: transport.send(socket, msg)
+    transport.send(socket, List.wrap(msgs))
   end
 
   defp init_state(transport, socket, mod, state) do
