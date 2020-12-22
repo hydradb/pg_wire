@@ -105,21 +105,6 @@ defmodule PGWire.Protocol do
     {:error, <<?E>>, data}
   end
 
-  defp auth_ok do
-    auth_type = Messages.auth_type(:ok)
-
-    ok =
-      [type: auth_type]
-      |> Messages.msg_auth()
-      |> Messages.encode_msg()
-
-    ready =
-      [status: ?I]
-      |> Messages.msg_ready()
-      |> Messages.encode_msg()
-
-    [ok, ready]
-  end
 
   @spec encode_data([map()] | map()) :: iolist()
   def encode_data(rows) when is_list(rows) do
@@ -170,9 +155,26 @@ defmodule PGWire.Protocol do
     |> Messages.encode_msg()
   end
 
+  @spec ready() :: iolist()
   def ready do
     [status: ?I]
     |> Messages.msg_ready()
     |> Messages.encode_msg()
+  end
+
+  defp auth_ok do
+    auth_type = Messages.auth_type(:ok)
+
+    ok =
+      [type: auth_type]
+      |> Messages.msg_auth()
+      |> Messages.encode_msg()
+
+    ready =
+      [status: ?I]
+      |> Messages.msg_ready()
+      |> Messages.encode_msg()
+
+    [ok, ready]
   end
 end
