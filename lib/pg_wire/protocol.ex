@@ -97,6 +97,16 @@ defmodule PGWire.Protocol do
     end
   end
 
+  def handle_message({:"$notify", {topic, payload}}, :idle, state) do
+    pg_pid = pid_to_int(self())
+    msg =
+      [pg_pid: pg_pid, channel: topic, payload: payload]
+      |> Messages.msg_notify()
+      |> Messages.encode_msg()
+
+    {:keep, msg, state}
+  end
+
   def handle_message(_msg, :idle, state) do
     {:keep, <<?E>>, state}
   end
@@ -104,7 +114,6 @@ defmodule PGWire.Protocol do
   def handle_message(_msg, _state, data) do
     {:error, <<?E>>, data}
   end
-
 
   @spec encode_data([map()] | map()) :: iolist()
   def encode_data(rows) when is_list(rows) do
@@ -176,5 +185,11 @@ defmodule PGWire.Protocol do
       |> Messages.encode_msg()
 
     [ok, ready]
+  end
+
+  defp pid_to_int(pid) do
+    pid
+    |> :erlang.pid_to_list()
+    |> Enum.reduce(0, &Kernel.+/2)
   end
 end

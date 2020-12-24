@@ -14,7 +14,8 @@ defmodule PGWire.Supervisor do
         [{:port, port}],
         PGWire.Connection,
         protocol: protocol
-      )
+      ),
+      {Registry, keys: :duplicate, name: protocol}
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one)

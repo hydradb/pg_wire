@@ -89,6 +89,10 @@ defmodule PGWire.Connection do
     handle_message(msg, :idle, :keep_state, data)
   end
 
+  def idle(:info, {:"$notify", _} = msg, data) do
+    handle_message(msg, :idle, :keep_state, data)
+  end
+
   def idle(:info, message, %__MODULE__{state: state} = data),
     do: noreply_callback(:handle_info, {message, state}, data)
 

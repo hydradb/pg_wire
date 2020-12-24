@@ -1,5 +1,6 @@
 defmodule PGWire.Encode do
   alias PGWire.Catalog.Types
+
   # import PGWire.BinaryUtils
 
   @type t :: {binary(), OID.t()}
@@ -8,18 +9,18 @@ defmodule PGWire.Encode do
   def string(bin) when is_binary(bin), do: {<<bin::binary>>, Types.type_info(:text)}
 
   @spec atom(atom()) :: t()
-  def atom(:nil) do
+  def atom(nil) do
     {<<"NULL"::binary>>, %{}}
   end
 
   @spec atom(atom()) :: t()
-  def atom(:true) do
+  def atom(true) do
     o = Types.type_info(:bool)
     {<<"true"::binary>>, o}
   end
 
   @spec atom(atom()) :: t()
-  def atom(:false) do
+  def atom(false) do
     o = Types.type_info(:bool)
     {<<"false"::binary>>, o}
   end

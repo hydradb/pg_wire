@@ -188,6 +188,11 @@ defmodule PGWire.Messages do
     {<<?C>>, <<tag::binary, 0::int8>>}
   end
 
+  def encode(msg_notify(pg_pid: pid, channel: ch, payload: p)) do
+    data = <<pid::int32, ch::binary, 0::int8, p::binary, 0::int8>>
+    {<<?A>>, data}
+  end
+
   def encode_msg(msg) do
     {first, data} = encode(msg)
     size = IO.iodata_length(data) + 4
