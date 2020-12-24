@@ -23,7 +23,7 @@ defmodule PGWire.ConnectionTest do
       tcp_msg = tcp_message(Postgrex.Messages.msg_ssl_request())
 
       assert {:keep_state, _, _} = Connection.connected(:info, tcp_msg, state)
-      assert assert_receive <<?N>>
+      assert assert_receive [<<?N>>]
     end
 
     test "with startup goes to `unauthenticated` state", %{state: state} do
@@ -53,7 +53,7 @@ defmodule PGWire.ConnectionTest do
         |> PGWire.Messages.msg_auth()
         |> PGWire.Messages.encode_msg()
 
-      assert_receive ^msg
+      assert_receive [^msg]
     end
 
     test "responds to startup sets `session_params` on the state`", %{state: state} do
@@ -119,8 +119,7 @@ defmodule PGWire.ConnectionTest do
 
       _ = Connection.unauthenticated(:info, tcp_msg, state)
 
-      assert_receive ^ok
-      assert_receive ^ready
+      assert_receive [^ok, ^ready]
     end
 
     test "password message error -> `diconnect` state", %{state: state, not_ok: tcp_msg} do
@@ -142,7 +141,7 @@ defmodule PGWire.ConnectionTest do
         |> tcp_message()
 
       assert {:keep_state, new_state, []} = Connection.idle(:info, tcp_msg, state)
-      assert_receive <<?E>>
+      assert_receive [<<?E>>]
     end
 
     test "handle_query is called for query msgs ", %{state: state} do
@@ -168,7 +167,7 @@ defmodule PGWire.ConnectionTest do
       |> Postgrex.Messages.encode_msg()
       |> :erlang.iolist_to_binary()
 
-    tcp_msg = {:tcp, make_ref(), msg}
+    {:tcp, make_ref(), msg}
   end
 
   defp make_state do
@@ -202,7 +201,7 @@ defmodule TestProtocol do
     end
   end
 
-  def handle_query(%{statement: stmt}, state) do
+  def handle_query(%{statement: _stmt}, state) do
     send(self(), :handle_query)
     {:ok, [], state}
   end
