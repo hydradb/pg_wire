@@ -1,30 +1,8 @@
-defmodule PGWire.Authentication do
-  defstruct [:user, :database, :password, :kind]
-
-  @type t :: %__MODULE__{
-          user: String.t(),
-          database: String.t(),
-          password: String.t(),
-          kind: :cleartext | :md5
-        }
-end
-
-defmodule PGWire.Query do
-  defstruct [:statement, :tag]
-
-  @type t :: %__MODULE__{
-          statement: String.t(),
-          tag: reference()
-        }
-end
-
 defmodule PGWire.Connection do
   @behaviour :gen_statem
 
-  require PGWire.Messages
   require Logger
-
-  alias PGWire.{Messages, Protocol}
+  alias PGWire.Protocol
 
   defstruct [
     :socket,
