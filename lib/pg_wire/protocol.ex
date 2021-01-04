@@ -99,6 +99,7 @@ defmodule PGWire.Protocol do
 
   def handle_message({:"$notify", {topic, payload}}, :idle, state) do
     pg_pid = pid_to_int(self())
+
     msg =
       [pg_pid: pg_pid, channel: topic, payload: payload]
       |> Messages.msg_notify()

@@ -1,10 +1,13 @@
 defmodule PGWire.MessageTest do
   use ExUnit.Case
 
-  import PGWire.Messages
+  require Postgrex.Messages
+  require PGWire.Messages
+
   import PGWire.BinaryUtils
 
   alias PGWire.Messages
+  alias Postgrex.Messages, as: ClientMessages
 
   @startup_opts [user: "hydra", database: "hydra"]
 
@@ -15,39 +18,56 @@ defmodule PGWire.MessageTest do
 
       msg = <<size::int32>> <> data
 
-      assert Messages.decode(msg) == msg_ssl_request()
+      assert Messages.decode(msg) == Messages.msg_ssl_request()
     end
 
     test "startup msg" do
-      msg = msg_startup(params: @startup_opts) |> enc()
+      msg = ClientMessages.msg_startup(params: @startup_opts) |> enc()
 
       assert Messages.decode(msg) ==
-               msg_startup(params: %{user: "hydra", database: "hydra"})
+               Messages.msg_startup(params: %{user: "hydra", database: "hydra"})
     end
 
     test "startup msg with `options`" do
-      msg = msg_startup(params: @startup_opts ++ [options: "arg1 arg2"]) |> enc()
+      msg = ClientMessages.msg_startup(params: @startup_opts ++ [options: "arg1 arg2"]) |> enc()
 
       assert Messages.decode(msg) ==
-               msg_startup(params: %{user: "hydra", database: "hydra", options: "arg1 arg2"})
+               Messages.msg_startup(
+                 params: %{user: "hydra", database: "hydra", options: "arg1 arg2"}
+               )
     end
 
     test "startup msg with unknowns are skipped" do
-      msg = msg_startup(params: @startup_opts ++ [unknown: "unknown"]) |> enc()
+      msg = ClientMessages.msg_startup(params: @startup_opts ++ [unknown: "unknown"]) |> enc()
 
       assert Messages.decode(msg) ==
-               msg_startup(params: %{user: "hydra", database: "hydra"})
+               Messages.msg_startup(params: %{user: "hydra", database: "hydra"})
     end
 
     test "password msg" do
-      msg = msg_password(pass: "hydra")
+      msg =
+        [pass: "hydra"]
+        |> ClientMessages.msg_password()
+        |> enc()
 
-      encoded =
-        msg
-        |> Postgrex.Messages.encode_msg()
-        |> :erlang.iolist_to_binary()
+      assert Messages.decode(msg) == Messages.msg_password(pass: "hydra")
+    end
 
-      assert Messages.decode(encoded) == msg_password(pass: "hydra")
+    test "query msg" do
+      stmt = "SELECT * FROM posts;"
+
+      msg =
+        [statement: stmt]
+        |> ClientMessages.msg_query()
+        |> enc()
+
+      assert Messages.decode(msg) == Messages.msg_query(statement: stmt)
+    end
+
+    test "terminate msg" do
+      msg = ClientMessages.msg_terminate() |> enc()
+
+      assert Messages.decode(msg) == Messages.msg_terminate()
     end
   end
 

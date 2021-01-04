@@ -99,6 +99,10 @@ defmodule PGWire.Messages do
     msg_query(statement: statement)
   end
 
+  def decode(<<?X, _length::int32>>) do
+    msg_terminate()
+  end
+
   def decode(msg) do
     IO.puts("Unknown message #{inspect(msg)}")
     :error

@@ -24,10 +24,12 @@ defmodule PGWire.PubSubTest do
 
   describe "notify/3" do
     test "broadcast to all listeners" do
-      assert :ok = PGWire.PubSub.listen(PGWire, "channel")
-      assert :ok = PGWire.PubSub.notify(PGWire, "channel", "message")
+      ch = "channel"
+      msg = "message"
+      assert :ok = PGWire.PubSub.listen(PGWire, ch)
+      assert :ok = PGWire.PubSub.notify(PGWire, ch, msg)
 
-      assert_receive {:"$notify", "message"}
+      assert_receive {:"$notify", {^ch, ^msg}}
     end
   end
 end
