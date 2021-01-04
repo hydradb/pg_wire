@@ -107,6 +107,9 @@ defmodule PGWire.Connection do
         {:keep, msgs, new_data} ->
           {{:keep_state, new_data, []}, msgs}
 
+        {:disconnect, _reason, msgs} ->
+          {{:next_state, :disconnect, data, []}, msgs}
+
         {:error, reason, msgs} ->
           IO.puts("reason=#{inspect(reason)} msgs=#{inspect(msgs)}")
           {{:next_state, :disconnect, data, []}, msgs}

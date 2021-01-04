@@ -42,6 +42,8 @@ defmodule PGWire.Protocol do
     end
   end
 
+  def handle_message(Messages.msg_terminate(), _, state), do: {:disconnect, :normal, [], state}
+
   def handle_message(Messages.msg_ssl_request(), :connected, state),
     do: {:keep, <<?N>>, state}
 

@@ -78,6 +78,13 @@ defmodule PGWire.ProtocolTest do
       assert {:error, _, _} = Protocol.handle_message(deny, :unauthenticated, state)
     end
   end
+
+  describe "termination" do
+    test "sends no msg and moves to issues a stop" do
+      msg = Messages.msg_terminate()
+      assert {:disconnect, :normal, [], _} = Protocol.handle_message(msg, :ok, %{})
+    end
+  end
 end
 
 defmodule T do
