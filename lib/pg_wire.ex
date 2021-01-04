@@ -21,18 +21,18 @@ defmodule PGWire.Authentication do
   defstruct [:user, :database, :password, :kind]
 
   @type t :: %__MODULE__{
-    user: String.t(),
-    database: String.t(),
-    password: String.t(),
-    kind: :cleartext | :md5
-  }
+          user: String.t(),
+          database: String.t(),
+          password: String.t(),
+          kind: :cleartext | :md5
+        }
 end
 
 defmodule PGWire.Query do
   defstruct [:statement, :tag]
 
   @type t :: %__MODULE__{
-    statement: String.t(),
-    tag: reference()
-  }
+          statement: String.t(),
+          tag: reference()
+        }
 end

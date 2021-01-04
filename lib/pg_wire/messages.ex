@@ -197,6 +197,15 @@ defmodule PGWire.Messages do
     {<<?A>>, data}
   end
 
+  def encode(msg_error(fields: fields)) do
+    bin =
+      Enum.map(fields, fn {field, value} ->
+        <<encode_error_field_type(field), value::binary, 0::int8>>
+      end)
+
+    {<<?E>>, bin}
+  end
+
   def encode_msg(msg) do
     {first, data} = encode(msg)
     size = IO.iodata_length(data) + 4
@@ -221,6 +230,10 @@ defmodule PGWire.Messages do
     size = IO.iodata_length(data) + 4
     <<size::int32>> <> data
   end
+
+  Enum.each(@error_fields, fn {field, char} ->
+    def encode_error_field_type(unquote(field)), do: unquote(char)
+  end)
 
   def auth_type(kind), do: Keyword.fetch!(@auth_types, kind)
 
