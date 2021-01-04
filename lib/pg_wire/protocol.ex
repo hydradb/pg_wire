@@ -144,7 +144,7 @@ defmodule PGWire.Protocol do
               type_oid: oid,
               type_size: typlen,
               type_mod: -1,
-              format: 1
+              format: 0
             )
 
     [fields: fields]

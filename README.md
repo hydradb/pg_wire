@@ -9,7 +9,7 @@ The PostgreSQL backend protocol for Elixir. Allows the creation of Postgres comp
 ## Features
 - [ x ] Simple query
 - [ ] Extended query
-- [ ] Notify / Listen
+- [ x ] Notify / Listen
 - [ ] Copy
 
 ## Installation
