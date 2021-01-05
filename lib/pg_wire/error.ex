@@ -122,4 +122,6 @@ defmodule PGWire.Error do
 
     struct(__MODULE__, opts)
   end
+
+  defdelegate to_map(t), to: Map, as: :from_struct
 end
