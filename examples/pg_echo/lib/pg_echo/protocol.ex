@@ -1,27 +1,24 @@
 defmodule PGEcho.Protocol do
-  require Logger
   use PGWire.Protocol
-  alias PGWire.{Authentication, Query, Protocol}
 
+  alias PGWire.{Query, Protocol}
+  alias PGWire.Authentication, as: A
+
+  @impl true
   def init(_opts) do
     {:ok, %{}}
   end
 
   @impl true
-  def handle_authentication(%Authentication{} = a, state) do
-    {:ok, [], state}
+  def handle_authentication(%A{user: user, password: pass} = a, state) do
+    if user == "hydra" and pass == "pass",
+      do: {:ok, [], state},
+      else: {:error, :not_authenticated, state}
   end
 
   @impl true
   def handle_query(%Query{statement: statement} = q, state) do
-    row =
-      statement
-      |> String.split(" ")
-      |> Enum.with_index()
-      |> Enum.map(fn {part, index} -> {"part#{index}", part} end)
-      |> Enum.into(%{})
-
-    msgs = encode_and_complete(q, [row])
+    msgs = encode_and_complete(q, [%{"echo" => statement}])
 
     {:ok, msgs, state}
   end
