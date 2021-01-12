@@ -194,7 +194,7 @@ defmodule PGWire.Protocol do
 
   def complete(statement, affected) do
     [command | _] = String.split(statement, " ")
-    tag = command <> " " <> to_string(affected)
+    tag = command <> " " <> tag(command, affected)
 
     [tag: tag]
     |> Messages.msg_command_complete()
@@ -222,6 +222,18 @@ defmodule PGWire.Protocol do
       |> Messages.encode_msg()
 
     [ok, ready]
+  end
+
+  def tag(command, affected) do
+    case String.downcase(command) do
+      "select" -> to_string(affected)
+      "delete" -> to_string(affected)
+      "update" -> to_string(affected)
+      "fetch" -> to_string(affected)
+      "copy" -> to_string(affected)
+      "insert" -> "0 " <> to_string(affected)
+      _ -> "0"
+    end
   end
 
   defp pid_to_int(pid) do
