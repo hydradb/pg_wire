@@ -47,6 +47,7 @@ end
 
 ```elixir
 iex> PGWire.start_link(PGEcho.Protocol, port: 5432)
+{:ok, #PID<0.251.0>}
 ```
 
 3. Start a client and send a query;
