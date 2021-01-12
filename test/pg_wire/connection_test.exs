@@ -16,7 +16,6 @@ defmodule PGWire.ConnectionTest do
       tcp_msg = tcp_message(Postgrex.Messages.msg_ssl_request())
 
       assert {:keep_state, state, []} = Connection.connected(:info, tcp_msg, state)
-      # assert next_state == :connected
     end
 
     test "responds to ssl_message with a ?N", %{state: state} do
@@ -168,10 +167,6 @@ defmodule PGWire.ConnectionTest do
       |> :erlang.iolist_to_binary()
 
     {:tcp, make_ref(), msg}
-  end
-
-  defp make_state do
-    %Connection{transport: Kernel, socket: self(), portals: %{}, session_params: %{}}
   end
 
   defp make_state(mod) do

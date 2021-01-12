@@ -90,12 +90,14 @@ defmodule PGWire.Messages do
   end
 
   def decode(<<?p, _length::int32, pass::binary>>) do
+    {pass, _rest} = decode_string(pass)
+
     msg_password(pass: pass)
   end
 
   def decode(<<?Q, _length::int32, statement::binary>>) do
-    # <<0>> following strings so cut it
-    statement = :binary.part(statement, 0, byte_size(statement) - 1)
+    {statement, _rest} = decode_string(statement)
+
     msg_query(statement: statement)
   end
 
@@ -121,6 +123,13 @@ defmodule PGWire.Messages do
     do: do_decode_params(:options, rest, acc)
 
   def decode_params(<<_flags::binary>>, acc), do: acc
+
+  # https://github.com/elixir-ecto/postgrex/blob/master/lib/postgrex/messages.ex#L401
+  defp decode_string(bin) do
+    {pos, 1} = :binary.match(bin, <<0>>)
+    {string, <<0, rest::binary>>} = :erlang.split_binary(bin, pos)
+    {string, rest}
+  end
 
   defp do_decode_params(key, rest, acc) do
     {value, binary} = decode_value(rest)
