@@ -61,10 +61,10 @@ iex> PGWire.start_link(PGEcho.Protocol, port: 5432)
 ```
 
 ## Features
-- [ ] Emulation of pg_catalog
 - [ x ] Simple query
-- [ ] Extended query
 - [ x ] Notify / Listen
+- [ X ] Emulation of pg_catalog (pg_types)
+- [ ] Extended query
 - [ ] Copy
 
 ## Installation
