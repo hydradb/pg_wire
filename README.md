@@ -52,7 +52,12 @@ iex> PGWire.start_link(PGEcho.Protocol, port: 5432)
 3. Start a client and send a query;
 
 ```bash
-psql -U hydra -h localhost -c 'SELECT * FROM mytable'
+➜ psql -U hydra -h localhost -c 'SELECT * FROM mytable'
+
+         echo
+-----------------------
+ SELECT * FROM mytable
+(1 row)
 ```
 
 ## Features
