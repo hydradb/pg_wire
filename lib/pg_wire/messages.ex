@@ -77,7 +77,7 @@ defmodule PGWire.Messages do
   defrecord :msg_cancel_request, [:pid, :key]
   defrecord :row_field, [:name, :table_oid, :column, :type_oid, :type_size, :type_mod, :format]
 
-  def decode(<<length::int32, 1234::int16, 5679::int16>>) do
+  def decode(<<_length::int32, 1234::int16, 5679::int16>>) do
     msg_ssl_request()
   end
 
@@ -150,12 +150,6 @@ defmodule PGWire.Messages do
 
     {to_string(value), slice}
   end
-
-  # defp decode_params(<<params::binary>>) do
-  #   case params do
-  #     <<key::binary, 0::int8, value::binary, 0::int8, rest::binary>>
-  #   end
-  # end
 
   def encode(msg_auth(type: type)) do
     {<<?R>>, <<type::int32>>}

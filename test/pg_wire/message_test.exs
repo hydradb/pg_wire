@@ -45,8 +45,9 @@ defmodule PGWire.MessageTest do
     end
 
     test "password msg" do
+      pass = "hydra" <> <<0>>
       msg =
-        [pass: "hydra"]
+        [pass: pass]
         |> ClientMessages.msg_password()
         |> enc()
 
@@ -76,19 +77,4 @@ defmodule PGWire.MessageTest do
     |> Postgrex.Messages.encode_msg()
     |> :erlang.iolist_to_binary()
   end
-
-  # defp startup_msg(params \\ []) do
-  #   params = [user: "hydra", database: "hydra"] ++ params
-
-  #   params =
-  #     Enum.reduce(params, [], fn {key, value}, acc ->
-  #       [acc, to_string(key), 0, value, 0]
-  #     end)
-
-  #   vsn = <<3::int16, 0::int16>>
-  #   data = :erlang.iolist_to_binary([vsn, params, 0])
-  #   size = IO.iodata_length(data) + 4
-
-  #   <<size::int32, data::binary>>
-  # end
 end

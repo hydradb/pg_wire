@@ -89,12 +89,12 @@ defmodule PGWire.ConnectionTest do
       state = make_state(TestProtocol)
 
       ok =
-        [pass: "pg"]
+        [pass: "pg" <> <<0>>]
         |> Postgrex.Messages.msg_password()
         |> tcp_message()
 
       not_ok =
-        [pass: "p"]
+        [pass: "p" <> <<0>>]
         |> Postgrex.Messages.msg_password()
         |> tcp_message()
 
@@ -135,7 +135,7 @@ defmodule PGWire.ConnectionTest do
 
     test "unknown message sends error but stays in :idle", %{state: state} do
       tcp_msg =
-        [pass: "p"]
+        [pass: "p" <> <<0>>]
         |> Postgrex.Messages.msg_password()
         |> tcp_message()
 

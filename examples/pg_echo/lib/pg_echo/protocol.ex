@@ -10,7 +10,7 @@ defmodule PGEcho.Protocol do
   end
 
   @impl true
-  def handle_authentication(%A{user: user, password: pass} = a, state) do
+  def handle_authentication(%A{user: user, password: pass}, state) do
     if user == "hydra" and pass == "pass",
       do: {:ok, [], state},
       else: {:error, :not_authenticated, state}
