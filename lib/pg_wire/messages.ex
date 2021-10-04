@@ -1,6 +1,10 @@
 defmodule PGWire.Messages do
+  @moduledoc false
+
   import Record, only: [defrecord: 2]
   import PGWire.BinaryUtils
+
+  @type t :: tuple()
   @protocol_vsn_major 3
   @protocol_vsn_minor 0
 
@@ -106,7 +110,6 @@ defmodule PGWire.Messages do
   end
 
   def decode(msg) do
-    IO.puts("Unknown message #{inspect(msg)}")
     :error
   end
 
@@ -202,7 +205,9 @@ defmodule PGWire.Messages do
 
   def encode(msg_error(fields: fields)) do
     bin =
-      Enum.map(fields, fn {field, value} ->
+      fields
+      |> Enum.filter(fn {_k, v} -> not is_nil(v) end)
+      |> Enum.map(fn {field, value} ->
         <<encode_error_field_type(field), value::binary, 0::int8>>
       end)
 
