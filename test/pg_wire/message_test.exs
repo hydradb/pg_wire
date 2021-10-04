@@ -46,6 +46,7 @@ defmodule PGWire.MessageTest do
 
     test "password msg" do
       pass = "hydra" <> <<0>>
+
       msg =
         [pass: pass]
         |> ClientMessages.msg_password()

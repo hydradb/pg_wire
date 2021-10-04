@@ -1,77 +1,20 @@
 defmodule PGWire.Protocol do
-  defmodule Error do
-    require PGWire.Messages
-    alias PGWire.{Messages, Error}
-
-    @spec fatal(atom(), Keyword.t()) :: iolist()
-    def fatal(error_name, opts \\ []) do
-      error_name
-      |> Error.fatal(opts)
-      |> encode_error()
-    end
-
-    @spec error(atom(), Keyword.t()) :: iolist()
-    def error(error_name, opts \\ []) do
-      error_name
-      |> Error.error(opts)
-      |> encode_error()
-    end
-
-    @spec warning(atom(), Keyword.t()) :: iolist()
-    def warning(error_name, opts \\ []) do
-      error_name
-      |> Error.warning(opts)
-      |> encode_error()
-    end
-
-    defp encode_error(error) do
-      error_fields = Error.to_map(error)
-
-      [fields: error_fields]
-      |> Messages.msg_error()
-      |> Messages.encode_msg()
-    end
-  end
+  @moduledoc false
 
   require PGWire.Messages
   alias PGWire.Messages
 
-  @callback init(args :: term) ::
-              {:ok, state}
-              | :ignore
-              | {:stop, reason :: any}
-            when state: any
-
-  @callback handle_authentication(auth :: any(), state :: term) ::
-              {:ok, [message], new_state}
-              | {:error, reason, new_state}
-              | {status, new_state}
-              | {:disconnect, reason, new_state}
-            when new_state: term, reason: term, message: term, status: term
-
-  @callback handle_query(query :: any(), state :: term) ::
-              {:ok, [message], new_state}
-              | {status, new_state}
-              | {:disconnect, reason, new_state}
-            when new_state: term, reason: term, message: term, status: term
-
-  defmacro __using__(_opts \\ []) do
-    quote location: :keep do
-      @behaviour PGWire.Protocol
-      import PGWire.Protocol,
-        only: [
-          encode_data: 1,
-          encode_descriptor: 1,
-          complete: 2,
-          ready: 0
-        ]
-    end
-  end
+  @type message :: binary() | iolist()
+  @type event :: :connected | :unauthenticated | :idle
+  @type action ::
+          {:next | :keep, message(), state :: term()}
+          | {:disconnect | :error, reason :: term(), msgs :: message, state :: term()}
 
   @doc false
+  @spec handle_message(Messages.t(), event(), term()) :: action()
   def handle_message(msg, current, state) when is_binary(msg) do
     case Messages.decode(msg) do
-      :error -> {:error, {:unknown_msg, msg}, []}
+      :error -> {:error, {:unknown_msg, msg}, [], state}
       msg -> handle_message(msg, current, state)
     end
   end
@@ -81,7 +24,7 @@ defmodule PGWire.Protocol do
   def handle_message(Messages.msg_ssl_request(), :connected, state),
     do: {:keep, <<?N>>, state}
 
-  def handle_message(Messages.msg_ssl_request(), _, state), do: {:error, <<?E>>, state}
+  def handle_message(Messages.msg_ssl_request(), _, state), do: {:error, :normal, <<?E>>, state}
 
   def handle_message(Messages.msg_startup(params: p), :connected, state) do
     auth_type = Messages.auth_type(:cleartext)
@@ -111,8 +54,8 @@ defmodule PGWire.Protocol do
         msgs = auth_ok()
         {:next, msgs, %{state | state: new_state}}
 
-      {:error, msgs, new_state} ->
-        {:error, msgs, %{state | state: new_state}}
+      {not_ok, reason, msgs, new_state} when not_ok in [:error, :disconnect] ->
+        {not_ok, reason, msgs, %{state | state: new_state}}
     end
   end
 
@@ -128,8 +71,8 @@ defmodule PGWire.Protocol do
       {:ok, msgs, new_state} ->
         {:keep, msgs, %{state | state: new_state}}
 
-      {:error, msgs, new_state} ->
-        {:error, msgs, %{state | state: new_state}}
+      {:error, reason, msgs, new_state} ->
+        {:error, reason, msgs, %{state | state: new_state}}
     end
   end
 
@@ -149,7 +92,7 @@ defmodule PGWire.Protocol do
   end
 
   def handle_message(_msg, _state, data) do
-    {:error, <<?E>>, data}
+    {:error, :normal, <<?E>>, data}
   end
 
   @spec encode_data([map()] | map()) :: iolist()

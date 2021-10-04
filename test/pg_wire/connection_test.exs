@@ -182,7 +182,7 @@ defmodule PGWire.ConnectionTest do
 end
 
 defmodule TestProtocol do
-  use PGWire.Protocol
+  use PGWire.Handler
 
   def init(_) do
     {:ok, %{}}

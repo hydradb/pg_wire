@@ -88,7 +88,11 @@ defmodule PGWire.ProtocolTest do
 end
 
 defmodule T do
-  use PGWire.Protocol
+  use PGWire.Handler
+
+  def init(_) do
+    {:ok, :ok}
+  end
 
   def handle_authentication(%PGWire.Authentication{password: pass}, state) do
     if pass == "pg" do
@@ -96,5 +100,9 @@ defmodule T do
     else
       {:error, :not_authenticated, state}
     end
+  end
+
+  def handle_query(%PGWire.Query{} = _query, _state) do
+    :ok
   end
 end
