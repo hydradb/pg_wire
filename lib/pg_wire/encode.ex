@@ -1,8 +1,6 @@
 defmodule PGWire.Encode do
   alias PGWire.Catalog.Types
 
-  # import PGWire.BinaryUtils
-
   @type t :: {binary(), OID.t()}
 
   @spec string(binary()) :: t()

@@ -74,7 +74,12 @@ defmodule PGWire.Connection do
   def idle(:info, message, %__MODULE__{state: state} = data),
     do: noreply_callback(:handle_info, {message, state}, data)
 
-  def disconnect(_, _, _), do: {:stop, :normal}
+  def disconnect(_, msg, %__MODULE__{transport: transport, socket: socket} = data) do
+    Logger.info(fn -> "Socket disconnect msg=#{inspect(msg)}" end)
+
+    :ok = transport.close(socket)
+    {:stop, :normal, data}
+  end
 
   defp handle_message(msg, current_state, next_state, %__MODULE__{} = data) do
     {state_transition, msgs} =
@@ -85,12 +90,12 @@ defmodule PGWire.Connection do
         {:keep, msgs, new_data} ->
           {{:keep_state, new_data, []}, msgs}
 
-        {:disconnect, _reason, msgs} ->
-          {{:next_state, :disconnect, data, []}, msgs}
+        {:disconnect, reason, msgs, new_data} ->
+          action = {:next_event, :cast, reason}
+          {{:next_state, :disconnect, new_data, [action]}, msgs}
 
-        {:error, reason, msgs} ->
-          IO.puts("reason=#{inspect(reason)} msgs=#{inspect(msgs)}")
-          {{:next_state, :disconnect, data, []}, msgs}
+        {:error, reason, msgs, new_data} ->
+          {{:next_state, :disconnect, new_data, []}, msgs}
       end
 
     _ = send_reply(msgs, data)

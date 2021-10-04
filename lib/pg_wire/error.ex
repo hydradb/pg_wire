@@ -29,6 +29,7 @@ defmodule PGWire.Error do
 
     @doc ~S"""
     Translates a PostgreSQL error code into a name
+
     Examples:
         iex> code_to_name("23505")
         :unique_violation
