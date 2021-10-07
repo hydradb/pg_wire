@@ -18,14 +18,14 @@ defmodule PGEcho.Handler do
 
   @impl true
   def handle_query(%Query{statement: statement} = q, state) do
-    msgs = encode_and_complete(q, [%{"echo" => statement}])
+    msgs = encode_and_complete(q, %{"echo" => statement}, [statement])
 
     {:ok, msgs, state}
   end
 
-  defp encode_and_complete(query, rows) do
+  defp encode_and_complete(query, descriptor, rows) do
     [
-      Protocol.encode_descriptor(rows),
+      Protocol.encode_descriptor(descriptor),
       Protocol.encode_data(rows),
       Protocol.complete(query, length(rows)),
       Protocol.ready()

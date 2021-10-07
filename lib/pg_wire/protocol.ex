@@ -97,13 +97,12 @@ defmodule PGWire.Protocol do
     {:error, :normal, <<?E>>, data}
   end
 
-  @spec encode_data([map()] | map()) :: iolist()
-  def encode_data(rows) when is_list(rows) do
-    for row <- rows, do: encode_data(row)
-  end
-
-  def encode_data(row) when is_map(row) do
-    values = PGWire.Encoder.encode(row, [])
+  @spec encode_data([any] | any()) :: iolist()
+  def encode_data(row) do
+    values =
+      row
+      |> List.wrap()
+      |> Enum.map(&(&1 |> PGWire.Encoder.encode() |> elem(0)))
 
     [values: values]
     |> Messages.msg_data_row()

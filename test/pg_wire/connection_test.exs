@@ -171,13 +171,21 @@ defmodule PGWire.ConnectionTest do
 
   defp make_state(mod) do
     %Connection{
-      transport: Kernel,
+      transport: Transport,
       socket: self(),
       portals: %{},
       session_params: %{},
       mod: mod,
       state: %{}
     }
+  end
+end
+
+defmodule Transport do
+  defdelegate send(dest, msg), to: Kernel
+
+  def setopts(_socket, _opts) do
+    :ok
   end
 end
 

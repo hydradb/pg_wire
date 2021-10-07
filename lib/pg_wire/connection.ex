@@ -28,7 +28,7 @@ defmodule PGWire.Connection do
 
     :ok =
       transport.setopts(socket,
-        active: true,
+        active: :once,
         nodelay: true,
         reuseaddr: true
       )
@@ -85,10 +85,10 @@ defmodule PGWire.Connection do
     {state_transition, msgs} =
       case Protocol.handle_message(msg, current_state, data) do
         {:next, msgs, new_data} ->
-          {{:next_state, next_state, new_data, []}, msgs}
+          {{:next_state, next_state, setopts(new_data, {:active, :once}), []}, msgs}
 
         {:keep, msgs, new_data} ->
-          {{:keep_state, new_data, []}, msgs}
+          {{:keep_state, setopts(new_data, {:active, :once}), []}, msgs}
 
         {:disconnect, reason, msgs, new_data} ->
           action = {:next_event, :cast, reason}
@@ -138,5 +138,10 @@ defmodule PGWire.Connection do
       :error_logger.warning_msg(log, [mod, msg])
       {:noreply, %{data | state: state}}
     end
+  end
+
+  defp setopts(%{transport: transport, socket: socket} = data, opts) do
+    transport.setopts(socket, List.wrap(opts))
+    data
   end
 end
