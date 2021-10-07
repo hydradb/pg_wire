@@ -1,5 +1,7 @@
 # PGWire
 
+![CI](https://github.com/hydradb/pg_wire/actions/workflows/ci.yml/badge.svg)
+
 The PostgreSQL backend protocol for Elixir. Allows the creation of Postgres compatible TCP servers.
 
 ## Usage
