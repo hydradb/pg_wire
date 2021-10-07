@@ -1,67 +1,12 @@
 defmodule PGWire.Encode do
-  alias PGWire.Catalog.Types
+  @type t :: {binary(), PGWire.Catalog.Types.OID.t()}
 
-  @type t :: {binary(), OID.t()}
-
-  @spec string(binary()) :: t()
-  def string(bin) when is_binary(bin), do: {<<bin::binary>>, Types.type_info(:text)}
-
-  @spec atom(atom()) :: t()
-  def atom(nil) do
-    {<<"NULL"::binary>>, %{}}
-  end
-
-  @spec atom(atom()) :: t()
-  def atom(true) do
-    o = Types.type_info(:bool)
-    {<<"true"::binary>>, o}
-  end
-
-  @spec atom(atom()) :: t()
-  def atom(false) do
-    o = Types.type_info(:bool)
-    {<<"false"::binary>>, o}
-  end
-
-  @spec atom(atom()) :: t()
-  def atom(atom) do
-    atom
-    |> to_string()
-    |> string()
-  end
-
-  @spec integer(integer()) :: t()
-  def integer(int) do
-    %{typlen: typlen} = o = Types.type_info(:int8)
-    int = Integer.to_string(int)
-    {<<int::binary>>, o}
-  end
-
-  @spec float(float()) :: t()
-  def float(f) when is_float(f) do
-    o = Types.type_info(:float8)
-
-    f = Float.to_string(f)
-    {<<f::binary>>, o}
-  end
-
-  @spec map(map()) :: t()
-  def map(map) do
-    o = Types.type_info(:json)
-    json = Jason.encode!(map)
-
-    {<<json::binary>>, o}
-  end
-
-  @spec list(list()) :: t()
-  def list(list) do
-    o = Types.type_info(:json)
-    json = Jason.encode!(list)
-
-    {<<json::binary>>, o}
-  end
-
-  defp bin_size(typelen), do: typelen * 8
+  @callback string(binary()) :: t()
+  @callback atom(atom()) :: t()
+  @callback integer(integer()) :: t()
+  @callback float(float()) :: t()
+  @callback map(map()) :: t()
+  @callback list(list()) :: t()
 end
 
 defprotocol PGWire.Encoder do
@@ -69,7 +14,7 @@ defprotocol PGWire.Encoder do
   @type opts :: Keyword.t()
 
   @spec encode(t(), opts) :: term()
-  def encode(row, opts)
+  def encode(row, opts \\ [])
 end
 
 defprotocol PGWire.Descriptor do
@@ -81,47 +26,45 @@ defprotocol PGWire.Descriptor do
 end
 
 defimpl PGWire.Encoder, for: Atom do
-  def encode(value, _opts \\ []) do
-    PGWire.Encode.atom(value)
+  def encode(value, opts) do
+    encoder = Keyword.get(opts, :encoder, PGWire.Encoder.Text)
+    encoder.atom(value)
   end
 end
 
 defimpl PGWire.Encoder, for: Integer do
-  def encode(value, _opts \\ []) do
-    PGWire.Encode.integer(value)
+  def encode(value, opts) do
+    encoder = Keyword.get(opts, :encoder, PGWire.Encoder.Text)
+    encoder.integer(value)
   end
 end
 
 defimpl PGWire.Encoder, for: Float do
-  def encode(value, _opts \\ []) do
-    PGWire.Encode.float(value)
+  def encode(value, opts) do
+    encoder = Keyword.get(opts, :encoder, PGWire.Encoder.Text)
+    encoder.float(value)
   end
 end
 
 defimpl PGWire.Encoder, for: List do
-  def encode(value, _opts \\ []) do
-    PGWire.Encode.list(value)
+  def encode(value, opts) do
+    encoder = Keyword.get(opts, :encoder, PGWire.Encoder.Text)
+    encoder.list(value)
   end
 end
 
 defimpl PGWire.Encoder, for: BitString do
-  def encode(value, _opts \\ []) do
-    PGWire.Encode.string(value)
+  def encode(value, opts) do
+    encoder = Keyword.get(opts, :encoder, PGWire.Encoder.Text)
+    encoder.string(value)
   end
 end
 
 defimpl PGWire.Encoder, for: Map do
   def encode(map, opts) do
-    _keys = Keyword.get(opts, :descriptor, Map.keys(map))
-
-    map
-    |> Map.values()
-    |> Enum.map(&(&1 |> do_encode() |> elem(0)))
+    encoder = Keyword.get(opts, :encoder, PGWire.Encoder.Text)
+    encoder.map(map)
   end
-
-  defp do_encode(map) when is_map(map), do: PGWire.Encode.map(map)
-  defp do_encode(list) when is_list(list), do: PGWire.Encode.list(list)
-  defp do_encode(value), do: PGWire.Encoder.encode(value, [])
 end
 
 defimpl PGWire.Descriptor, for: Map do
@@ -133,8 +76,8 @@ defimpl PGWire.Descriptor, for: Map do
     end)
   end
 
-  defp do_encode(map) when is_map(map), do: PGWire.Encode.map(map)
-  defp do_encode(list) when is_list(list), do: PGWire.Encode.list(list)
+  defp do_encode(map) when is_map(map), do: PGWire.Encoder.Text.map(map)
+  defp do_encode(list) when is_list(list), do: PGWire.Encoder.Text.list(list)
   defp do_encode(nil), do: PGWire.Encoder.encode("", [])
   defp do_encode(value), do: PGWire.Encoder.encode(value, [])
 end
