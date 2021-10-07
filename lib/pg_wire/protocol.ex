@@ -24,7 +24,9 @@ defmodule PGWire.Protocol do
   def handle_message(Messages.msg_ssl_request(), :connected, state),
     do: {:keep, <<?N>>, state}
 
-  def handle_message(Messages.msg_ssl_request(), _, state), do: {:error, :normal, <<?E>>, state}
+  def handle_message(Messages.msg_ssl_request(), _, state) do
+    {:error, :normal, <<?E>>, state}
+  end
 
   def handle_message(Messages.msg_startup(params: p), :connected, state) do
     auth_type = Messages.auth_type(:cleartext)

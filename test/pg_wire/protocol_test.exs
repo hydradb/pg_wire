@@ -16,7 +16,7 @@ defmodule PGWire.ProtocolTest do
     test "in other state returns error" do
       ssl_req = Messages.msg_ssl_request()
 
-      assert {:error, _, _} = Protocol.handle_message(ssl_req, :other_state, %{})
+      assert {:error, _, _, _} = Protocol.handle_message(ssl_req, :other_state, %{})
     end
   end
 
@@ -75,7 +75,10 @@ defmodule PGWire.ProtocolTest do
     end
 
     test "with incorrect password returns error", %{deny: deny, state: state} do
-      assert {:error, _, _} = Protocol.handle_message(deny, :unauthenticated, state)
+      assert {:error, _reason, msgs, _state} =
+               Protocol.handle_message(deny, :unauthenticated, state)
+
+      refute Enum.empty?(msgs)
     end
   end
 
@@ -89,16 +92,22 @@ end
 
 defmodule T do
   use PGWire.Handler
+  alias PGWire.Messages.Error
 
   def init(_) do
     {:ok, :ok}
   end
 
-  def handle_authentication(%PGWire.Authentication{password: pass}, state) do
+  def handle_authentication(%{password: pass}, state) do
     if pass == "pg" do
       {:ok, [], state}
     else
-      {:error, :not_authenticated, state}
+      {
+        :error,
+        :not_authenticated,
+        Error.fatal(:invalid_authorization_specification),
+        state
+      }
     end
   end
 

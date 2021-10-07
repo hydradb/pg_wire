@@ -95,7 +95,8 @@ defmodule PGWire.Connection do
           {{:next_state, :disconnect, new_data, [action]}, msgs}
 
         {:error, reason, msgs, new_data} ->
-          {{:next_state, :disconnect, new_data, []}, msgs}
+          action = {:next_event, :cast, reason}
+          {{:next_state, :disconnect, new_data, [action]}, msgs}
       end
 
     _ = send_reply(msgs, data)

@@ -15,7 +15,7 @@ defmodule PGWire.ConnectionTest do
     test "with ssl_message stays in `connected` state", %{state: state} do
       tcp_msg = tcp_message(Postgrex.Messages.msg_ssl_request())
 
-      assert {:keep_state, state, []} = Connection.connected(:info, tcp_msg, state)
+      assert {:keep_state, _state, []} = Connection.connected(:info, tcp_msg, state)
     end
 
     test "responds to ssl_message with a ?N", %{state: state} do
@@ -139,7 +139,7 @@ defmodule PGWire.ConnectionTest do
         |> Postgrex.Messages.msg_password()
         |> tcp_message()
 
-      assert {:keep_state, new_state, []} = Connection.idle(:info, tcp_msg, state)
+      assert {:keep_state, _new_state, []} = Connection.idle(:info, tcp_msg, state)
       assert_receive [<<?E>>]
     end
 
@@ -183,6 +183,7 @@ end
 
 defmodule TestProtocol do
   use PGWire.Handler
+  alias PGWire.Messages.Error
 
   def init(_) do
     {:ok, %{}}
@@ -192,7 +193,12 @@ defmodule TestProtocol do
     if pass == "pg" do
       {:ok, [], state}
     else
-      {:error, :not_authenticated, state}
+      {
+        :error,
+        :not_authenticated,
+        Error.fatal(:invalid_authorization_specification),
+        state
+      }
     end
   end
 
